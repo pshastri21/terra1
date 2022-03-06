@@ -9,7 +9,6 @@ jobs:
       - run: echo "deploy my app"
       - slack/notify:
           event: fail
-          mentions: '@EngineeringTeam'
           template: basic_fail_1
       - slack/notify:
           event: pass
