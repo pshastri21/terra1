@@ -18,35 +18,22 @@ commands:
           template: basic_success_1
           
 jobs:
-  deploy:
+   say-hello:
+    # Specify the execution environment. You can specify an image from Dockerhub or use one of our Convenience Images from CircleCI's Developer Hub.
+    # See: https://circleci.com/docs/2.0/configuration-reference/#docker-machine-macos-windows-executor
     docker:
-      - image: circleci/node:12.18.0
-    resource_class: medium
+      - image: cimg/base:stable
+    # Add steps to the job
+    # See: https://circleci.com/docs/2.0/configuration-reference/#steps
     steps:
-      - trigger_slack_notification
       - checkout
       - run:
-          name: Install packages
-          command: npm install
-      - run:
-          name: Installing Firebase-Tools
-          command: npm install firebase-tools
-      - run:
-          name: Firebase Set Project Id
-          command: ./node_modules/.bin/firebase use default --token $FIREBASE_DEVELOP_DEPLOY_TOKEN
-      - run:
-          name: Build App
-          command: npm run build:app
-      - run:
-          name: Deploy All
-          command: ./node_modules/.bin/firebase deploy --token $FIREBASE_DEVELOP_DEPLOY_TOKEN --only functions,hosting,storage --force
+          name: "Say hello"
+          command: "echo Hello, World!"
       - notify_slack_error
       - notify_slack_pass
 
 workflows:
-  Firebase_Build_Deploy:
+ say-hello-workflow:
     jobs:
-      - deploy:
-          filters:
-            branches:
-              only: develop
+      - say-hello
