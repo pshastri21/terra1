@@ -19,10 +19,10 @@ jobs:
       - node/install-packages
       - run:
           command: npm run deploy
-
+      - notify_slack_error
 workflows:
   deploy_and_notify:
     jobs:
       - deploy:
           context: slack-secrets
-     
+    
