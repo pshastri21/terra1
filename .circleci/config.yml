@@ -30,9 +30,7 @@ jobs:
       - run:
           name: "Say hello"
           command: "echo Hello, World!"
-      - slack/notify:
-          event: fail   
-     
+  
       - notify_slack_pass
       - notify_slack_hold
      
