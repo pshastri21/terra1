@@ -39,9 +39,9 @@ jobs:
      
         
       - notify_slack_error
-      - notify_slack_pass
       - notify_slack_hold
-
+      - notify_slack_pass
+     
 workflows:
  say-hello-workflow:
     jobs:
