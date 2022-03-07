@@ -2,7 +2,27 @@ version: 2.1
 
 orbs:
   heroku: circleci/heroku@0.0.10 # Invoke the Heroku orb
+  slack: circleci/slack@4.3.0
 
+commands:
+  notify_slack_error:
+    steps:
+      - slack/notify:
+          event: fail
+          template: basic_fail_1
+
+  notify_slack_pass:
+    steps:
+      - slack/notify:
+          event: pass
+          template: basic_success_1
+
+  notify_slack_hold:
+    steps:
+      - slack/notify:
+          event: fail
+          template: basic_on_hold_1      
+          
 workflows:
   heroku_deploy:
     jobs:
@@ -34,3 +54,7 @@ jobs:
       - run:
           name: Run tests
           command: rake
+
+      - notify_slack_error
+      - notify_slack_pass
+      - notify_slack_hold
