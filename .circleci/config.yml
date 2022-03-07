@@ -1,7 +1,11 @@
 version: 2.1
 
 orbs:
-  heroku: circleci/heroku@0.0.10 # Invoke the Heroku orb
+  aws-ecr: circleci/aws-ecr@6.12.2
+  windows: circleci/windows@2.4.0
+  aws-ecs: circleci/aws-ecs@1.3.0
+  ms-teams: cloudradar-monitoring/ms-teams@0.0.1
+  aws-cli: circleci/aws-cli@1.3.1
   slack: circleci/slack@4.3.0
 
 commands:
@@ -21,40 +25,226 @@ commands:
     steps:
       - slack/notify:
           event: fail
-          template: basic_on_hold_1      
-          
-workflows:
-  heroku_deploy:
-    jobs:
-      - build
-      - heroku/deploy-via-git: # Use the pre-configured job, deploy-via-git
-          requires:
-            - build
-          filters:
-            branches:
-              only: sequential-branch-filter
+          template: basic_on_hold_1    
+
 jobs:
-  build:
-    docker:
-      - image: cimg/ruby:2.4-node
-        auth:
-          username: mydockerhub-user
-          password: $DOCKERHUB_PASSWORD  # context / project UI env-var reference
-      - image: cimg/postgres:9.6
-        auth:
-          username: mydockerhub-user
-          password: $DOCKERHUB_PASSWORD  # context / project UI env-var reference
-    working_directory: ~/circleci-demo-workflows
+  build_and_push_dev:
+    machine: true
     steps:
       - checkout
-      # Bundle install dependencies
-      - run: bundle install --path vendor/bundle
-      # Database setup
-      - run: bundle exec rake db:create db:schema:load
       - run:
-          name: Run tests
-          command: rake
-
+          name: "Pull Submodules for Development"
+          command: |
+            git submodule init
+            git submodule update --remote
+            cd eldmandate-data-layer
+            git config --global user.email "circle@circle"
+            git config --global user.name "circleci"
+            git checkout develop
+            git pull origin develop
+            cd ..
+      - aws-ecr/build-and-push-image:
+          repo: "dev-assettracker-api-microservice"
+          tag: "${CIRCLE_SHA1}"
+      - notify_slack_error
+      - notify_slack_pass
+      - notify_slack_hold   
+  build_and_test:
+    description: Setup and run integration tests
+    executor:
+      name: windows/default
+    steps:
+      - checkout
+      - run:
+          name: "Pull Submodules for Development"
+          command: |
+            git submodule init
+            git submodule update --remote
+            cd eldmandate-data-layer
+            git config --global user.email "circle@circle"
+            git config --global user.name "circleci"
+            git checkout develop
+            git pull origin develop
+            cd ..
+      - restore_cache:
+          keys:
+            - dotnet-packages-v1-{{ checksum "IntegrationTests/IntegrationTests.csproj" }}
+      - run:
+          name: "Build"
+          command: dotnet build assettracker.api.microservice.sln
+      - save_cache:
+          paths:
+            - C:\Users\circleci\.nuget\packages
+          key: dotnet-packages-v1-{{ checksum "IntegrationTests/IntegrationTests.csproj" }}
+      - run:
+          name: "Install Test Coverage tool ReportGenerator"
+          command: |
+            dotnet tool install -g dotnet-reportgenerator-globaltool
+            dotnet tool install dotnet-reportgenerator-globaltool --tool-path tools
+            dotnet new tool-manifest
+            dotnet tool install dotnet-reportgenerator-globaltool
+      - run:
+          name: "Run Integration Tests"
+          command: |
+            cd IntegrationTests
+            dotnet test --results-directory:test_coverage --collect:"Xplat Code Coverage" --settings coverlet.runsettings
+      - run:
+          name: "Create xUnit Report"
+          command: |
+            cd IntegrationTests/test_coverage/*
+            reportgenerator "-reports:*.xml" "-targetdir:report"
+      - store_artifacts:
+          path: C:\Users\circleci\project\IntegrationTests\test_coverage
+      - run:
+          name: "Check test coverage. Fail below coverage minimums."
+          command: |
+            $intCoverageXML = [xml](Get-Content C:\Users\circleci\project\IntegrationTests\test_coverage\*\coverage.cobertura.xml)
+            [decimal]$intLineCoverage=$intCoverageXML.coverage | Select -ExpandProperty line-rate
+            [decimal]$intBranchCoverage=$intCoverageXML.coverage | Select -ExpandProperty branch-rate
+            echo "LINE COVERAGE: $intLineCoverage"
+            echo "BRANCH COVERAGE: $intBranchCoverage"
+            if (($intLineCoverage -ge 0.05) -and ($intBranchCoverage -ge .05)) {
+              Exit 0
+            }
+            else {
+              Exit 1
+            }
+      - notify_slack_error
+      - notify_slack_pass
+      - notify_slack_hold   
+  msNotify:
+    docker:
+      - image: cimg/node:14.15.1-browsers
+    executor: aws-cli/default
+    steps:
+      - ms-teams/report:
+          webhook_url: https://eldmandate.webhook.office.com/webhookb2/37002470-5070-4f01-b6ed-3bcc44180824@6a4f939d-635f-454d-9d19-7926a1208c06/IncomingWebhook/aae189ec52a04f04bd7d2c6e8271461d/aea37b94-7ffa-42b8-9cbe-014d0a48e677
+  build_and_push_staging:
+    machine: true
+    steps:
+      - checkout
+      - run:
+          name: "Pull Submodules for Development"
+          command: |
+            git submodule init
+            git submodule update --remote
+            cd eldmandate-data-layer
+            git config --global user.email "circle@circle"
+            git config --global user.name "circleci"
+            git checkout master
+            git pull origin master
+            cd ..
+      - aws-ecr/build-and-push-image:
+          repo: "staging-assettracker-api-microservice"
+          tag: "${CIRCLE_SHA1}"
+          
+      - notify_slack_error
+      - notify_slack_pass
+      - notify_slack_hold   
+  
+  build_and_push_prod:
+    machine: true
+    steps:
+      - checkout
+      - run:
+          name: "Pull Submodules for Development"
+          command: |
+            git submodule init
+            git submodule update --remote
+            cd eldmandate-data-layer
+            git config --global user.email "circle@circle"
+            git config --global user.name "circleci"
+            git checkout master
+            git pull origin master
+            cd ..
+      - aws-ecr/build-and-push-image:
+          repo: "prod-assettracker-api-microservice"
+          tag: "${CIRCLE_SHA1}"
       - notify_slack_error
       - notify_slack_pass
       - notify_slack_hold
+workflows:
+  version: 2
+  build-and-test:
+    jobs:
+      - build_and_test:
+          filters:
+            branches:
+              ignore:
+                - develop
+                - master
+                - staging
+  build-and-deploy-dev:
+    jobs:
+      - build_and_push_dev:
+          filters:
+            branches:
+              only: develop
+      - aws-ecs/deploy-service-update:
+          requires:
+            - build_and_push_dev # only run this job once aws-ecr/build-and-push-image has completed
+          family: "dev-assettracker-api-microservice"
+          name: 'aws-ecs/deploy-service-update-dev'
+          cluster-name: "dev-assettracker-api-microservice"
+          container-image-name-updates: "container=dev-assettracker-api-microservice,tag=${CIRCLE_SHA1}"
+          service-name: "dev-assettracker-api-microservice"
+          filters:
+            branches:
+                only: develop
+      - msNotify:
+          name: 'deployment-dev-build-notify'
+          requires:
+            - aws-ecs/deploy-service-update-dev
+          filters:
+            branches:
+              only: develop
+
+      
+  build-and-deploy-staging:
+    jobs:
+      - build_and_push_staging:
+          filters:
+            branches:
+              only: staging
+      - aws-ecs/deploy-service-update:
+          requires:
+            - build_and_push_staging
+          family: "staging-assettracker-api-microservice"
+          name: 'aws-ecs/deploy-service-update-staging'
+          cluster-name: 'staging-assettracker-api-microservice'
+          container-image-name-updates: "container=staging-assettracker-api-microservice,tag=${CIRCLE_SHA1}"
+          service-name: "staging-assettracker-api-microservice"
+          filters:
+            branches:
+              only: staging
+      - msNotify:
+          name: 'deployment-staging-build-notify'
+          requires:
+            - aws-ecs/deploy-service-update-staging
+          filters:
+            branches:
+              only: staging
+  build-and-deploy-prod:
+    jobs:
+      - build_and_push_prod:
+          filters:
+            branches:
+              only: master
+      - aws-ecs/deploy-service-update:
+          requires:
+            - build_and_push_prod # only run this job once aws-ecr/build-and-push-image has completed
+          family: "prod-assettracker-api-microservice" # Task definition's name
+          name: 'aws-ecs/deploy-service-update-prod'
+          cluster-name: "prod-assettracker-api-microservice"
+          container-image-name-updates: "container=prod-assettracker-api-microservice,tag=${CIRCLE_SHA1}"
+          service-name: "prod-assettracker-api-microservice-2"
+          filters:
+            branches:
+                only: master
+      - msNotify:
+          name: 'deployment-prod-build-notify'
+          requires:
+            - aws-ecs/deploy-service-update-prod
+          filters:
+            branches:
+              only: master
