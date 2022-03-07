@@ -5,12 +5,6 @@ orbs:
   slack: circleci/slack@4.3.0
 
 commands:
-  notify_slack_error:
-    steps:
-      - slack/notify:
-          event: fail
-          template: basic_fail_1
-
   notify_slack_pass:
     steps:
       - slack/notify:
@@ -36,11 +30,10 @@ jobs:
       - run:
           name: "Say hello"
           command: "echo Hello, World!"
-     
-        
+      - slack/notify:
+          event: fail   
      
       - notify_slack_pass
-      - notify_slack_error
       - notify_slack_hold
      
 workflows:
