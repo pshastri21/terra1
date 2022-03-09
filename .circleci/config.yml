@@ -42,14 +42,14 @@ jobs:
             git checkout develop
             git pull origin develop
             cd ..
-      - notify_slack_error
-      - notify_slack_pass
-      - notify_slack_hold
+     
  
       - aws-ecr/build-and-push-image:
           repo: "dev-assettracker-api-microservice"
           tag: "${CIRCLE_SHA1}"
-         
+      - notify_slack_error
+      - notify_slack_pass
+      - notify_slack_hold   
   build_and_test:
     description: Setup and run integration tests
     executor:
@@ -110,6 +110,9 @@ jobs:
             else {
               Exit 1
             }
+      - notify_slack_error
+      - notify_slack_pass
+      - notify_slack_hold      
   msNotify:
     docker:
       - image: cimg/node:14.15.1-browsers
