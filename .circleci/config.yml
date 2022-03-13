@@ -20,11 +20,24 @@ commands:
       - slack/notify:
           event: fail
           template: basic_on_hold_1  
+
+
+jobs:
+  build_and_push_dev:
+    machine: true
+    steps:
+      - checkout
+      - run:
+          name: "Pull Submodules for Development"
+          command: |
+            git submodule init
+             git clone https://github.com/course-hero/slacktee.git
+
 jobs:
   build:
     executor: windows/default
     steps:
       - run:
-          command: "echo Hello, World!"
-          shell: powershell.exe
-      - notify_slack_error
+          command: bash ./slacktee/install.sh
+          shell: bash.exe
+      
