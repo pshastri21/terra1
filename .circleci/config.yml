@@ -17,7 +17,8 @@ jobs:
           command: |
             git clone https://github.com/course-hero/slacktee.git
             ls
-           
+            cd slacktee
+            bash ./slacktee/install.sh /usr/bin
       # Clone git repository
 
 
