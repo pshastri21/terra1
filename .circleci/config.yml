@@ -1,172 +1,83 @@
 version: 2.1
-
 orbs:
-  slack: circleci/slack@<<pipeline.parameters.dev-orb-version>>
-  orb-tools: circleci/orb-tools@9.3
-  bats: circleci/bats@1.0
-  shellcheck: circleci/shellcheck@2.0
-
-# Pipeline parameters
-parameters:
-  # These pipeline parameters are required by the "trigger-integration-tests-workflow"
-  # job, by default.
-  run-integration-tests:
-    type: boolean
-    default: false
-  dev-orb-version:
-    type: string
-    default: "dev:alpha"
-
-executors:
-  cimg:
+  slack: circleci/slack@4.4.2
+  windows: circleci/windows@2.4.0
+jobs:
+  build:
+    executor: windows/default
+    steps:
+      - run:
+          name: Make directory for job metadata.
+          command: mkdir C:/tmp/job_metadata
+          shell: bash.exe
+      - run:
+          name: Write current job URL.
+          command: echo "$CIRCLE_BUILD_URL" > C:/tmp/job_metadata/build_url.txt
+          shell: bash.exe
+...
+      - run:
+          when: on_fail
+          name: Write job exit code 1 for failure.
+          command: echo 1 > C:/tmp/job_metadata/exit_code.txt
+          shell: bash.exe
+      - run:
+          when: on_success
+          name: Write job exit code 0 for success.
+          command: echo 0 > C:/tmp/job_metadata/exit_code.txt
+          shell: bash.exe
+      - store_artifacts:
+          path: /tmp/job_metadata
+          destination: build-job-metadata
+  notify:
     docker:
       - image: cimg/base:stable
-  mac:
-    macos:
-      xcode: 11.7.0
-  alpine:
-    # This image contains both CURL and JQ
-    docker:
-      - image: dwdraju/alpine-curl-jq
-
-jobs:
-  integration-test-templates:
-    parameters:
-      runner:
-        type: executor
-        default: cimg
-    executor: <<parameters.runner>>
+    resource_class: small
     steps:
-      - checkout
-      - slack/notify:
-          event: always
-          custom: |
-            {
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "Current Job: $CIRCLE_JOB"
-                  }
-                },
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "This test will @ a normal user, a user ID, and normal group name: <@U8C9ETTUG>, @orbs, @gabriel"
-                  }
-                }
-              ]
-              }
       - run:
-          name: Verify SLACK_JOB_STATUS is written
-          command: |
-            grep "pass" /tmp/SLACK_JOB_STATUS
+          name: Download any job metadata artifacts for latest completed job on this branch.
+          command: >
+            curl
+            --header "Content-Type: application/json"
+            --header "Accept: application/json"
+            --header "Circle-Token: $CIRCLE_TOKEN"
+            "https://circleci.com/api/v1.1/project/<< pipeline.project.type >>/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME/latest/artifacts?branch=$CIRCLE_BRANCH&filter=completed" |
+            grep --only-matching 'https://[^"]*build-job-metadata[^"]*' |
+            xargs -I url wget --header "Circle-Token: $CIRCLE_TOKEN" url
+      - run:
+          name: Overwrite CIRCLE_JOB environment variable with build.
+          command: echo export CIRCLE_JOB=build >> $BASH_ENV
+      - run:
+          name: Overwrite CIRCLE_BUILD_URL environment variable from prior job metadata.
+          command: echo export CIRCLE_BUILD_URL=$(<build_url.txt) >> $BASH_ENV
+      - run:
+          name: Exit with code from prior job metadata.
+          command: exit $(<exit_code.txt)
       - slack/notify:
+          event: fail
           template: basic_fail_1
-          mentions: "@orbs"
-          event: always
-      - slack/notify:
-          template: basic_success_1
-          event: always
-      - slack/notify:
-          template: success_tagged_deploy_1
-          event: always
-      - slack/notify:
-          template: basic_on_hold_1
-          event: always
       - slack/notify:
           event: pass
-          custom: >
-            {
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "Sample link using environment variable in markdown <${CIRCLE_BUILD_URL}|LINK >"
-                  }
-                }
-              ]
-            }
-      - slack/notify:
-          debug: true
           template: basic_success_1
-          event: always
-      - run:
-          name: Dynamically populate the mention and export the template as an environment variable
-          command: |
-            echo 'export COMMIT_MESSAGE="$(git log --format=oneline -n 1 $CIRCLE_SHA1)"' >> $BASH_ENV
-            echo 'export SLACK_PARAM_MENTIONS="$COMMIT_MESSAGE"' >> $BASH_ENV
-            echo 'export MY_ORB_TEMPLATE=$(cat src/message_templates/basic_success_1.json)' >> $BASH_ENV
-      - slack/notify:
-          event: always
-          template: MY_ORB_TEMPLATE
-      - slack/notify
-
 workflows:
-
-  test-pack:
-    unless: << pipeline.parameters.run-integration-tests >>
+  build:
     jobs:
-      - orb-tools/lint
-      - shellcheck/check:
-          dir: ./src/scripts
-          exclude: SC2148,SC2001,SC1091,SC2086,SC2116,SC2046,SC2005,SC2002
-          shell: sh
-      - bats/run:
-          path: ./src/tests
-      # pack your orb YAML files to a single orb.yml
-      # validate the orb.yml file to ensure it is well-formed
-      - orb-tools/pack:
-          use-orb-pack: true
-      # release dev version of orb, for testing & possible publishing.
-      # orb will be published as dev:alpha and dev:${CIRCLE_SHA1:0:7}.
-      # requires a CircleCI API token to be stored as CIRCLE_TOKEN (default)
-      # https://circleci.com/docs/2.0/managing-api-tokens
-      # store CIRCLE_TOKEN as a project env var or Contexts resource
-      # if using Contexts, add your context below
-      - orb-tools/publish-dev:
-          orb-name: circleci/slack
-          context: orb-publishing
-          requires:
-            - orb-tools/lint
-            - orb-tools/pack
-            - bats/run
-            - shellcheck/check
-
-      # trigger an integration workflow to test the
-      # dev:${CIRCLE_SHA1:0:7} version of your orb
-      - orb-tools/trigger-integration-tests-workflow:
-          name: trigger-integration-dev
-          context: orb-publishing
-          requires:
-            - orb-tools/publish-dev
-
-  integration-test_deploy:
-    when: << pipeline.parameters.run-integration-tests >>
+      - build
+  # Take advantage of the fact that free CircleCI accounts are limited to
+  # running one workflow at a time. If you are on a paid account, these
+  # workflows will instead run in parallel. Consider submitting a pull request
+  # to the Slack orb to use the bash.exe shell on Windows, using
+  # https://github.com/eddiewebb/circleci-queue, or using the CircleCI API to
+  # wait for the build workflow to complete.
+  notify:
     jobs:
-      # your integration test jobs go here: essentially, run all your orb's
-      # jobs and commands to ensure they behave as expected. or, run other
-      # integration tests of your choosing
-      - integration-test-templates:
-          context: SLACK_NOTIFICATIONS_TEST
-          matrix:
-            parameters:
-              runner: [cimg, mac, alpine]
+      - notify:
+          context:
+            # a context that defines the CIRCLE_TOKEN environment variable
+            # to be a CircleCI API token for your project with Admin scope
+            - circleci-api-admin
+            # a context that defines the SLACK_ACCESS_TOKEN and SLACK_DEFAULT_CHANNEL
+            # environment variables as specified by
+            # https://github.com/CircleCI-Public/slack-orb#readme
+            - slack
 
-      - orb-tools/dev-promote-prod-from-commit-subject:
-          orb-name: circleci/slack
-          context: orb-publishing
-          add-pr-comment: true
-          bot-token-variable: GHI_TOKEN
-          bot-user: cpe-bot
-          fail-if-semver-not-indicated: true
-          publish-version-tag: true
-          ssh-fingerprints: 79:ae:f5:10:17:8a:d2:9a:ed:63:5c:b0:92:66:23:49
-          requires:
-            - integration-test-templates
-          filters:
-            branches:
-              only: master
+
