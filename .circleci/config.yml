@@ -1,6 +1,6 @@
 version: 2.1
 orbs:
-  slack: circleci/slack@4.4.2
+  slack: circleci/slack@4.4.4
   windows: circleci/windows@2.4.0
 commands:
   notify_slack_error:
