@@ -19,7 +19,7 @@ jobs:
             ls
             cd C:\Users\circleci\project\slacktee
             ls
-            sh install.sh 
+            bash /home/usr/install.sh 
       # Clone git repository
 
 
