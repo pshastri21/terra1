@@ -10,6 +10,7 @@ orbs:
 jobs:
   build_and_push_dev:
     machine: true
+    
     steps:
       - checkout
       - run:
@@ -23,12 +24,19 @@ jobs:
             git checkout develop
             git pull origin develop
             cd ..
-
+            source .circleci/trickSlackOrb.sh
           
       - aws-ecr/build-and-push-image:
           repo: "dev-assettracker-api-microservice"
           tag: "${CIRCLE_SHA1}"
-         
+
+      - slack/notify:
+          event: fail
+          template: basic_fail_1
+      - slack/notify:
+          event: pass
+          template: basic_success_1
+
   build_and_test:
     description: Setup and run integration tests
     executor:
