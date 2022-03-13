@@ -14,7 +14,6 @@ jobs:
           name: Write current job URL.
           command: echo "$CIRCLE_BUILD_URL" > C:/tmp/job_metadata/build_url.txt
           shell: bash.exe
-...
       - run:
           when: on_fail
           name: Write job exit code 1 for failure.
