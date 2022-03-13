@@ -2,7 +2,7 @@ version: 2.1
 
 orbs:
   win: circleci/windows@2.2.0
-
+  slack: signaldevs/slack@0.1.0
 jobs:
   build:
     executor:
@@ -17,3 +17,4 @@ jobs:
           command: |
             docker info
             docker run hello-world:nanoserver-1809
+      - slack/notify_release
