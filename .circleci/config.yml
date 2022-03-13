@@ -121,7 +121,9 @@ jobs:
           webhook_url: https://eldmandate.webhook.office.com/webhookb2/37002470-5070-4f01-b6ed-3bcc44180824@6a4f939d-635f-454d-9d19-7926a1208c06/IncomingWebhook/aae189ec52a04f04bd7d2c6e8271461d/aea37b94-7ffa-42b8-9cbe-014d0a48e677
   
      
-
+      - notify_slack_error
+      - notify_slack_pass
+      - notify_slack_hold 
   build_and_push_staging:
     machine: true
     steps:
@@ -162,9 +164,7 @@ jobs:
       - aws-ecr/build-and-push-image:
           repo: "prod-assettracker-api-microservice"
           tag: "${CIRCLE_SHA1}"
-      - notify_slack_error
-      - notify_slack_pass
-      - notify_slack_hold    
+        
       
 workflows:
   version: 2
