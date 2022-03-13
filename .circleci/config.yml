@@ -2,6 +2,26 @@ version: 2.1
 orbs:
   slack: circleci/slack@4.4.2
   windows: circleci/windows@2.4.0
+  
+
+commands:
+  notify_slack_error:
+    steps:
+      - slack/notify:
+          event: fail
+          template: basic_fail_1
+
+  notify_slack_pass:
+    steps:
+      - slack/notify:
+          event: pass
+          template: basic_success_1
+
+  notify_slack_hold:
+    steps:
+      - slack/notify:
+          event: fail
+          template: basic_on_hold_1 
 jobs:
   build:
     executor: windows/default
@@ -51,12 +71,10 @@ jobs:
       - run:
           name: Exit with code from prior job metadata.
           command: exit $(<exit_code.txt)
-      - slack/notify:
-          event: fail
-          template: basic_fail_1
-      - slack/notify:
-          event: pass
-          template: basic_success_1
+          
+      - notify_slack_error
+      - notify_slack_pass
+      - notify_slack_hold
 workflows:
   build:
     jobs:
