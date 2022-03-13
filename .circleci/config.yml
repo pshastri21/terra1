@@ -18,6 +18,7 @@ jobs:
             git clone https://github.com/course-hero/slacktee.git
             ls
             cd C:\Users\circleci\project\slacktee
+            ls
             bash ./slacktee/install.sh 
       # Clone git repository
 
