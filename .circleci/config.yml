@@ -110,7 +110,9 @@ jobs:
               Exit 1
             }
           
-     
+      - slack/notify:
+          event: fail 
+
 
   msNotify:
     docker:
