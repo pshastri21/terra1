@@ -1,21 +1,30 @@
 version: 2.1
 orbs:
-  slack: narrativescience/slack@0.2.2
+  slack: circleci/slack@4.4.4
   windows: circleci/windows@2.4.0
-
- 
-jobs:
-  build:
-    docker:
-      - image: <docker image>
+commands:
+  notify_slack_error:
     steps:
       - slack/notify:
-          color: '#42e2f4'
-          mentions: 'USERID1,USERID2,'
-          message: This is a custom message notification
-          webhook: webhook
+          event: fail
+          template: basic_fail_1
 
-workflows:
-  your-workflow:
-    jobs:
-      - build
+  notify_slack_pass:
+    steps:
+      - slack/notify:
+          event: pass
+          template: basic_success_1
+
+  notify_slack_hold:
+    steps:
+      - slack/notify:
+          event: fail
+          template: basic_on_hold_1  
+jobs:
+  build:
+    executor: windows/default
+    steps:
+      - run:
+          command: "echo Hello, World!"
+          shell: powershell.exe
+      - notify_slack_error
