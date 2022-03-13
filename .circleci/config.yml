@@ -16,6 +16,7 @@ jobs:
           shell: powershell.exe
           command: |
             git clone https://github.com/course-hero/slacktee.git
+            ls
            
       # Clone git repository
 
