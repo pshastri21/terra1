@@ -1,8 +1,8 @@
+
 version: 2.1
+
 orbs:
-  slack: circleci/slack@4.4.2
-  windows: circleci/windows@2.4.0
-  
+  slack: circleci/slack@4.3.0
 
 commands:
   notify_slack_error:
@@ -21,80 +21,28 @@ commands:
     steps:
       - slack/notify:
           event: fail
-          template: basic_on_hold_1 
+          template: basic_on_hold_1      
+          
 jobs:
-  build:
-    executor: windows/default
-    steps:
-      - run:
-          name: Make directory for job metadata.
-          command: mkdir C:/tmp/job_metadata
-          shell: bash.exe
-      - run:
-          name: Write current job URL.
-          command: echo "$CIRCLE_BUILD_URL" > C:/tmp/job_metadata/build_url.txt
-          shell: bash.exe
-      - run:
-          when: on_fail
-          name: Write job exit code 1 for failure.
-          command: echo 1 > C:/tmp/job_metadata/exit_code.txt
-          shell: bash.exe
-      - run:
-          when: on_success
-          name: Write job exit code 0 for success.
-          command: echo 0 > C:/tmp/job_metadata/exit_code.txt
-          shell: bash.exe
-      - store_artifacts:
-          path: /tmp/job_metadata
-          destination: build-job-metadata
-  notify:
+   say-hello:
+    # Specify the execution environment. You can specify an image from Dockerhub or use one of our Convenience Images from CircleCI's Developer Hub.
+    # See: https://circleci.com/docs/2.0/configuration-reference/#docker-machine-macos-windows-executor
     docker:
       - image: cimg/base:stable
-    resource_class: small
+    # Add steps to the job
+    # See: https://circleci.com/docs/2.0/configuration-reference/#steps
     steps:
+      - checkout
       - run:
-          name: Download any job metadata artifacts for latest completed job on this branch.
-          command: >
-            curl
-            --header "Content-Type: application/json"
-            --header "Accept: application/json"
-            --header "Circle-Token: $CIRCLE_TOKEN"
-            "https://circleci.com/api/v1.1/project/<< pipeline.project.type >>/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME/latest/artifacts?branch=$CIRCLE_BRANCH&filter=completed" |
-            grep --only-matching 'https://[^"]*build-job-metadata[^"]*' |
-            xargs -I url wget --header "Circle-Token: $CIRCLE_TOKEN" url
-      - run:
-          name: Overwrite CIRCLE_JOB environment variable with build.
-          command: echo export CIRCLE_JOB=build >> $BASH_ENV
-      - run:
-          name: Overwrite CIRCLE_BUILD_URL environment variable from prior job metadata.
-          command: echo export CIRCLE_BUILD_URL=$(<build_url.txt) >> $BASH_ENV
-      - run:
-          name: Exit with code from prior job metadata.
-          command: exit $(<exit_code.txt)
-          
+          name: "Say hello"
+          command: "echo Hello, World!"
+     
+        
       - notify_slack_error
       - notify_slack_pass
       - notify_slack_hold
+
 workflows:
-  build:
+ say-hello-workflow:
     jobs:
-      - build
-  # Take advantage of the fact that free CircleCI accounts are limited to
-  # running one workflow at a time. If you are on a paid account, these
-  # workflows will instead run in parallel. Consider submitting a pull request
-  # to the Slack orb to use the bash.exe shell on Windows, using
-  # https://github.com/eddiewebb/circleci-queue, or using the CircleCI API to
-  # wait for the build workflow to complete.
-  notify:
-    jobs:
-      - notify:
-          context:
-            # a context that defines the CIRCLE_TOKEN environment variable
-            # to be a CircleCI API token for your project with Admin scope
-            - circleci-api-admin
-            # a context that defines the SLACK_ACCESS_TOKEN and SLACK_DEFAULT_CHANNEL
-            # environment variables as specified by
-            # https://github.com/CircleCI-Public/slack-orb#readme
-            - slack
-
-
+      - say-hello
