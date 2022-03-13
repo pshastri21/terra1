@@ -1,43 +1,19 @@
 version: 2.1
+
 orbs:
-  slack: circleci/slack@4.4.4
-  windows: circleci/windows@2.4.0
-commands:
-  notify_slack_error:
-    steps:
-      - slack/notify:
-          event: fail
-          template: basic_fail_1
-
-  notify_slack_pass:
-    steps:
-      - slack/notify:
-          event: pass
-          template: basic_success_1
-
-  notify_slack_hold:
-    steps:
-      - slack/notify:
-          event: fail
-          template: basic_on_hold_1  
-
-
-jobs:
-  build_and_push_dev:
-    machine: true
-    steps:
-      - checkout
-      - run:
-          name: "Pull Submodules for Development"
-          command: |
-            git submodule init
-             git clone https://github.com/course-hero/slacktee.git
+  win: circleci/windows@2.2.0
 
 jobs:
   build:
-    executor: windows/default
+    executor:
+      name: win/default
+      shell: powershell.exe
     steps:
+      - checkout
+      - run: systeminfo
       - run:
-          command: bash ./slacktee/install.sh
-          shell: bash.exe
-      
+          name: "Check docker"
+          shell: powershell.exe
+          command: |
+            docker info
+            docker run hello-world:nanoserver-1809
