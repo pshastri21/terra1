@@ -27,6 +27,5 @@ jobs:
       - run:
           command: "echo Hello, World!"
           shell: bash.exe
-      - notify_slack_error
-      - notify_slack_pass
-      - notify_slack_hold
+      - slack/notify:
+          event: fail
