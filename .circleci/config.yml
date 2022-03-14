@@ -13,11 +13,13 @@ jobs:
       - run: systeminfo
       - run:
           name: "Check docker"
-          shell: powershell.exe
+          shell: bash.exe
           command: |
             git clone https://github.com/course-hero/slacktee.git
             ls
             cd C:\Users\circleci\project\slacktee
             ls
             bash ./install.sh -s  C:\Users\bin
+            ls | slacktee.sh
+
     
