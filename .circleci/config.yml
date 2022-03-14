@@ -19,7 +19,7 @@ jobs:
             ls
             cd C:\Users\circleci\project\slacktee
             ls
-            bash ./install.sh  C:\Users\bin
-            
+            bash ./install.sh -s  C:\Users\bin
+        
 
     
