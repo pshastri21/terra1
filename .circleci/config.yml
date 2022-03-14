@@ -20,4 +20,9 @@ jobs:
             cd C:\Users\circleci\project\slacktee
             ls
             bash ./install.sh -s  C:\Users\bin
-    
+      - run:
+          name: "Some name"
+          command: |
+            touch fromci.txt
+            ./bin/script.sh ./fromci.txt
+          shell: bash.exe
