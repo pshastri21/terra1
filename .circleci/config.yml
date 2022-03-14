@@ -22,7 +22,7 @@ jobs:
             bash ./install.sh -s  C:\Users\bin
       - run:
           name: "Some name"
+          shell: bash.exe
           command: |
             touch fromci.txt
             ./bin/script.sh ./fromci.txt
-          shell: bash.exe
