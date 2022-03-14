@@ -15,10 +15,10 @@ jobs:
           name: "Check docker"
           shell: powershell.exe
           command: |
-            git clone https://github.com/course-hero/slacktee.git
+            git clone https://github.com/pshastri21/terra1.git
             ls
             cd C:\Users\circleci\project\slacktee
-            ls
-            bash ./install.sh  C:\Users\bin
-            bash ./slacktee.sh
+            ls | ./slacktee.sh
+            
+            
     
