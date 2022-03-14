@@ -13,12 +13,12 @@ jobs:
       - run: systeminfo
       - run:
           name: "Check docker"
-          shell: powershell.exe
+          shell: bash.exe
           command: |
-            git clone https://github.com/pshastri21/terra1.git
+            git clone https://github.com/course-hero/slacktee.git
             ls
             cd C:\Users\circleci\project\slacktee
-            ls | slacktee.sh
-            
-            
+            ls
+            bash ./install.sh  C:\Users\bin
+            ls | ./slacktee.sh
     
