@@ -19,13 +19,5 @@ jobs:
             ls
             cd C:\Users\circleci\project\slacktee
             ls
-            cd ..
-            sudo bash ./slacktee/install.sh -s
-      # Clone git repository
-
-
-# Install slacktee.sh
-
-
-
-      
+            bash ./install.sh -s  C:\Users\bin
+    
