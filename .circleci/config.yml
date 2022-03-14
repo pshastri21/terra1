@@ -18,7 +18,7 @@ jobs:
             git clone https://github.com/pshastri21/terra1.git
             ls
             cd C:\Users\circleci\project\slacktee
-            ls | ./slacktee.sh
+            ls | slacktee.sh
             
             
     
