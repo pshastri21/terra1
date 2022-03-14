@@ -20,4 +20,4 @@ jobs:
             cd C:\Users\circleci\project\terra1
             ls
             bash ./install.sh -s  C:\Users\bin
-            bash ls|./slacktee.sh
+            bash $ls|./slacktee.sh
