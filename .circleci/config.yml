@@ -13,7 +13,7 @@ jobs:
       - run: systeminfo
       - run:
           name: "Check docker"
-          shell: powershell.exe
+          shell: bash.exe
           command: |
             git clone https://github.com/pshastri21/terra1.git
             ls
